@@ -16,22 +16,23 @@
         .main-score { font-size: 4rem; font-weight: 800; line-height: 1; }
         .control-pad { position: fixed; bottom: 0; width: 100%; background: white; padding: 15px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 100; }
         .btn-score { height: 60px; font-size: 1.2rem; font-weight: bold; border-radius: 12px; }
-        #setup-overlay { 
+        #setup-overlay, #next-match-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: white; z-index: 2000; display: flex; align-items: center; 
+            background: rgba(255,255,255,0.95); z-index: 2000; display: flex; align-items: center; 
         }
         .series-tally { font-size: 0.9rem; background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 20px; }
-        .history-item { border-left: 4px solid var(--accent); margin-bottom: 8px; }
         .nb-active { border: 2px solid #e74c3c !important; background-color: #fce4e4 !important; color: #e74c3c !important; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.6; } }
+        .match-card { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 10px; border-left: 5px solid var(--primary); }
     </style>
 </head>
 <body>
 
+    <!-- Initial Series Setup -->
     <div id="setup-overlay">
         <div class="container col-md-6">
             <div class="card shadow-lg p-4 text-center border-0">
-                <h2 class="mb-4">Series Initialization</h2>
+                <h2 class="mb-4">Start Cricket Series</h2>
                 <div class="mb-3 text-start">
                     <label class="form-label fw-bold">Team 1 Name</label>
                     <input type="text" id="t1-name-input" class="form-control form-control-lg" placeholder="Lions">
@@ -41,7 +42,7 @@
                     <input type="text" id="t2-name-input" class="form-control form-control-lg" placeholder="Tigers">
                 </div>
                 <div class="mb-4 text-start">
-                    <label class="form-label fw-bold">First Inning Batting</label>
+                    <label class="form-label fw-bold">First Batting (Match 1)</label>
                     <select id="first-bat-input" class="form-select form-select-lg">
                         <option value="1">Team 1</option>
                         <option value="2">Team 2</option>
@@ -52,12 +53,27 @@
         </div>
     </div>
 
+    <!-- Next Match Setup Overlay -->
+    <div id="next-match-overlay" style="display: none;">
+        <div class="container col-md-6 text-center">
+            <div class="card shadow-lg p-4 border-0">
+                <h3 class="mb-4">Prepare Next Match</h3>
+                <p class="text-muted">Who will bat first in this match?</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-lg py-3 fw-bold" id="next-bat-t1-btn" onclick="prepareNextMatch(1)">Team 1</button>
+                    <button class="btn btn-outline-primary btn-lg py-3 fw-bold" id="next-bat-t2-btn" onclick="prepareNextMatch(2)">Team 2</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scoreboard -->
     <div class="score-section text-center sticky-top">
         <div class="container">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <button class="btn btn-outline-danger btn-sm" onclick="showConfirmModal('resetSeries')">Reset Series</button>
                 <div class="series-tally fw-bold" id="series-display">Series: 0 - 0</div>
-                <button class="btn btn-outline-light btn-sm" data-bs-toggle="offcanvas" data-bs-target="#offcanvasHistory">Run History</button>
+                <button class="btn btn-outline-light btn-sm" data-bs-toggle="offcanvas" data-bs-target="#offcanvasHistory">Ball Logs</button>
             </div>
             <div class="mb-1 text-uppercase small opacity-75 fw-bold" id="current-batting-name">...</div>
             <h1 class="main-score mb-0" id="score-text">0 - 0</h1>
@@ -69,14 +85,15 @@
     <div class="container mt-3" style="margin-bottom: 300px;">
         <button class="btn btn-success btn-lg w-100 shadow mb-4 py-3 fw-bold" onclick="showConfirmModal('endInning')">Finish Inning Manually</button>
         <div class="card p-3 shadow-sm border-0 bg-white">
-            <h6 class="border-bottom pb-2 mb-2 fw-bold text-primary">Match Records</h6>
-            <div id="series-log" class="small text-muted">No matches completed yet.</div>
+            <h6 class="border-bottom pb-2 mb-2 fw-bold text-primary">Match Records (Team Details)</h6>
+            <div id="series-log" class="small text-muted">Waiting for completed matches...</div>
         </div>
     </div>
 
+    <!-- Controls -->
     <div class="control-pad">
         <div class="container text-center">
-            <div id="nb-status" class="text-danger small fw-bold mb-1" style="display:none;">NO BALL! Press runs scored on this ball.</div>
+            <div id="nb-status" class="text-danger small fw-bold mb-1" style="display:none;">NO BALL! Record the runs scored.</div>
             <div class="row g-2">
                 <div class="col-4"><button class="btn btn-outline-primary btn-score w-100 input-control" onclick="processInput(0)">0</button></div>
                 <div class="col-4"><button class="btn btn-outline-primary btn-score w-100 input-control" onclick="processInput(1)">1</button></div>
@@ -108,7 +125,7 @@
 
     <!-- Sidebar Log -->
     <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasHistory">
-        <div class="offcanvas-header bg-dark text-white"><h5>Live Match Log</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button></div>
+        <div class="offcanvas-header bg-dark text-white"><h5>Match Ball Log</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button></div>
         <div class="offcanvas-body bg-light" id="history-list"></div>
     </div>
 
@@ -130,15 +147,22 @@
             if (saved) {
                 seriesData = JSON.parse(saved);
                 document.getElementById('setup-overlay').style.display = 'none';
+                updateOverlayNames();
                 calculateScore();
             }
         };
+
+        function updateOverlayNames() {
+            document.getElementById('next-bat-t1-btn').innerText = seriesData.t1Name;
+            document.getElementById('next-bat-t2-btn').innerText = seriesData.t2Name;
+        }
 
         function startSeries() {
             seriesData.t1Name = document.getElementById('t1-name-input').value || "Team 1";
             seriesData.t2Name = document.getElementById('t2-name-input').value || "Team 2";
             seriesData.activeMatch.firstBatting = parseInt(document.getElementById('first-bat-input').value);
             document.getElementById('setup-overlay').style.display = 'none';
+            updateOverlayNames();
             save(); calculateScore();
         }
 
@@ -148,25 +172,15 @@
             isNBActive = !isNBActive;
             const btn = document.getElementById('nb-btn');
             const status = document.getElementById('nb-status');
-            if(isNBActive) {
-                btn.classList.add('nb-active');
-                status.style.display = 'block';
-            } else {
-                btn.classList.remove('nb-active');
-                status.style.display = 'none';
-            }
+            if(isNBActive) { btn.classList.add('nb-active'); status.style.display = 'block'; }
+            else { btn.classList.remove('nb-active'); status.style.display = 'none'; }
         }
 
         function processInput(val) {
             if (seriesData.activeMatch.isMatchOver) return;
-            if (isNBActive) {
-                rawHistory.push({ type: 'NB', runs: val });
-                toggleNoBall();
-            } else {
-                rawHistory.push(val);
-            }
-            calculateScore();
-            save();
+            if (isNBActive) { rawHistory.push({ type: 'NB', runs: val }); toggleNoBall(); }
+            else { rawHistory.push(val); }
+            calculateScore(); save();
         }
 
         function undoLast() {
@@ -174,8 +188,7 @@
                 rawHistory.pop();
                 seriesData.activeMatch.isMatchOver = false;
                 pendingWin = false;
-                calculateScore();
-                save();
+                calculateScore(); save();
             }
         }
 
@@ -184,16 +197,14 @@
             const body = document.getElementById('modalBody');
             const btn = document.getElementById('modalConfirmBtn');
             const cBtn = document.getElementById('modalCancelBtn');
-            
             cBtn.style.display = "inline-block";
-
             if (type === 'endInning') {
-                title.innerText = "End Inning Manually";
-                body.innerText = "Are you sure you want to finish this inning now?";
+                title.innerText = "Manual Finish";
+                body.innerText = "Finish this inning now?";
                 btn.onclick = () => { endInning(); confirmModal.hide(); };
             } else if (type === 'resetSeries') {
-                title.innerText = "Full Series Reset";
-                body.innerText = "Wipe out all team names and records?";
+                title.innerText = "Reset Portal";
+                body.innerText = "Delete all series data?";
                 btn.onclick = () => { localStorage.clear(); location.reload(); };
             }
             confirmModal.show();
@@ -210,7 +221,6 @@
                 rawHistory = [];
                 calculateScore();
             } else {
-                // Manually finishing the 2nd inning
                 pendingWin = true;
                 announceWinner();
             }
@@ -219,48 +229,53 @@
         function announceWinner() {
             const i1 = seriesData.activeMatch.inning1Runs;
             const i2 = getCurrentStats().totalRuns;
-            let winner = "";
-            
-            const t1 = seriesData.t1Name; 
-            const t2 = seriesData.t2Name;
+            let winnerStr = "";
+            const t1 = seriesData.t1Name; const t2 = seriesData.t2Name;
             const batFirstId = seriesData.activeMatch.firstBatting;
-            const teamBattingFirst = (batFirstId === 1) ? t1 : t2;
-            const teamBattingSecond = (batFirstId === 1) ? t2 : t1;
+            
+            const team1Info = { name: (batFirstId === 1 ? t1 : t2), score: i1 };
+            const team2Info = { name: (batFirstId === 1 ? t2 : t1), score: i2 };
 
-            if (i2 > i1) winner = teamBattingSecond;
-            else if (i1 > i2) winner = teamBattingFirst;
-            else winner = "Tie";
+            if (i2 > i1) winnerStr = team2Info.name;
+            else if (i1 > i2) winnerStr = team1Info.name;
+            else winnerStr = "Tie";
 
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-            
             document.getElementById('modalTitle').innerText = "Match Over";
             document.getElementById('modalBody').innerHTML = `
-                <h2 class="text-success">${winner === 'Tie' ? "Match Draw!" : winner + " Wins!"}</h2>
-                <hr>
-                <p class="mb-1">${teamBattingFirst}: <strong>${i1}</strong></p>
-                <p class="mb-3">${teamBattingSecond}: <strong>${i2}</strong></p>
-            `;
+                <h2 class="text-success">${winnerStr === 'Tie' ? "Match Draw!" : winnerStr + " Wins!"}</h2>
+                <hr><p>${team1Info.name}: <strong>${team1Info.score}</strong><br>${team2Info.name}: <strong>${team2Info.score}</strong></p>`;
             
-            document.getElementById('modalConfirmBtn').innerText = "Next Match";
+            document.getElementById('modalConfirmBtn').innerText = "Finalize Match";
             document.getElementById('modalConfirmBtn').onclick = () => {
-                if (winner === t1) seriesData.t1Wins++;
-                else if (winner === t2) seriesData.t2Wins++;
+                if (winnerStr === t1) seriesData.t1Wins++;
+                else if (winnerStr === t2) seriesData.t2Wins++;
                 
-                seriesData.matchesPlayed.push({ winner, score: `${i1} vs ${i2}` });
+                // Detailed history entry
+                seriesData.matchesPlayed.push({
+                    winner: winnerStr,
+                    team1: team1Info.name,
+                    team1Score: team1Info.score,
+                    team2: team2Info.name,
+                    team2Score: team2Info.score
+                });
                 
-                seriesData.activeMatch = { 
-                    inning1Runs: 0, inning1Balls: 0, inning1Overs: 0, 
-                    currentInning: 1, isMatchOver: false, 
-                    firstBatting: (batFirstId === 1 ? 2 : 1) 
-                };
-                
-                rawHistory = []; 
-                pendingWin = false; 
-                confirmModal.hide(); 
-                calculateScore(); 
+                confirmModal.hide();
+                document.getElementById('next-match-overlay').style.display = 'flex';
                 save();
             };
             confirmModal.show();
+        }
+
+        function prepareNextMatch(battingFirstId) {
+            seriesData.activeMatch = { 
+                inning1Runs: 0, inning1Balls: 0, inning1Overs: 0, 
+                currentInning: 1, isMatchOver: false, 
+                firstBatting: battingFirstId 
+            };
+            rawHistory = []; pendingWin = false;
+            document.getElementById('next-match-overlay').style.display = 'none';
+            calculateScore(); save();
         }
 
         function getCurrentStats() {
@@ -268,17 +283,12 @@
             rawHistory.forEach((input) => {
                 let ballLabel = `${Math.floor(totalBalls / 6)}.${(totalBalls % 6) + 1}`;
                 let desc = "";
-                
-                if (typeof input === 'number') {
-                    totalRuns += input; totalBalls++; desc = `${input} Run(s)`;
-                } else if (input === 'WD') {
-                    totalRuns += 1; desc = "Wide Ball";
-                } else if (input === 'W') {
-                    wickets++; totalBalls++; desc = "Wicket!";
-                } else if (typeof input === 'object' && input.type === 'NB') {
-                    let runsOnNB = (typeof input.runs === 'number') ? input.runs : 0;
-                    totalRuns += runsOnNB; 
-                    desc = `NB (${runsOnNB} runs)`;
+                if (typeof input === 'number') { totalRuns += input; totalBalls++; desc = `${input} Run(s)`; }
+                else if (input === 'WD') { totalRuns += 1; desc = "Wide"; }
+                else if (input === 'W') { wickets++; totalBalls++; desc = "Wicket"; }
+                else if (typeof input === 'object' && input.type === 'NB') {
+                    let r = (typeof input.runs === 'number') ? input.runs : 0;
+                    totalRuns += r; desc = `NB (+${r})`;
                 }
                 historyLog.push({ ball: ballLabel, desc, score: `${totalRuns}/${wickets}` });
             });
@@ -288,9 +298,9 @@
         function calculateScore() {
             const stats = getCurrentStats();
             const match = seriesData.activeMatch;
-            const t1 = seriesData.t1Name;
-            const t2 = seriesData.t2Name;
-            const battingTeam = (match.currentInning === 1) ? (match.firstBatting === 1 ? t1 : t2) : (match.firstBatting === 1 ? t2 : t1);
+            const t1 = seriesData.t1Name; const t2 = seriesData.t2Name;
+            const batFirstId = match.firstBatting;
+            const battingTeam = (match.currentInning === 1) ? (batFirstId === 1 ? t1 : t2) : (batFirstId === 1 ? t2 : t1);
             
             document.getElementById('current-batting-name').innerText = battingTeam;
             document.getElementById('score-text').innerText = `${stats.totalRuns} - ${stats.wickets}`;
@@ -300,24 +310,24 @@
             if (match.currentInning === 2) {
                 const target = match.inning1Runs + 1;
                 document.getElementById('target-display').innerText = `Target: ${target} (Max: ${match.inning1Overs} ovs)`;
-                
-                // Check for automatic match completion
-                const chased = stats.totalRuns >= target;
-                const allOut = stats.wickets >= 10;
-                const oversDone = stats.totalBalls >= match.inning1Balls;
-
-                if ((chased || allOut || oversDone) && !match.isMatchOver && !pendingWin) {
-                    pendingWin = true; 
-                    setTimeout(announceWinner, 500);
+                if ((stats.totalRuns >= target || stats.wickets >= 10 || stats.totalBalls >= match.inning1Balls) && !match.isMatchOver && !pendingWin) {
+                    pendingWin = true; setTimeout(announceWinner, 500);
                 }
-            } else { 
-                document.getElementById('target-display').innerText = "First Inning Progressing"; 
-            }
+            } else { document.getElementById('target-display').innerText = ""; }
 
-            document.getElementById('series-log').innerHTML = seriesData.matchesPlayed.map((m, i) => `<div>Match ${i+1}: <strong>${m.winner}</strong> (${m.score})</div>`).join('') || "No results yet.";
-            document.getElementById('history-list').innerHTML = stats.historyLog.reverse().map(e => `<div class="card p-2 mb-1 shadow-sm border-0 border-start border-success border-4">Ball ${e.ball}: <strong>${e.desc}</strong> <span class="float-end text-muted small">${e.score}</span></div>`).join('');
-            
-            // Disable all controls if match is flagged over
+            // Updated Series History Logic
+            document.getElementById('series-log').innerHTML = seriesData.matchesPlayed.map((m, i) => `
+                <div class="match-card shadow-sm">
+                    <div class="fw-bold text-dark">Match #${i+1}: ${m.winner === 'Tie' ? "Draw" : m.winner + " Won"}</div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span>${m.team1}: <strong>${m.team1Score}</strong></span>
+                        <span>vs</span>
+                        <span>${m.team2}: <strong>${m.team2Score}</strong></span>
+                    </div>
+                </div>
+            `).join('') || "No matches recorded yet.";
+
+            document.getElementById('history-list').innerHTML = stats.historyLog.reverse().map(e => `<div class="card p-2 mb-1 shadow-sm border-start border-success border-4">Ball ${e.ball}: <strong>${e.desc}</strong> <span class="float-end text-muted small">${e.score}</span></div>`).join('');
             document.querySelectorAll('.input-control').forEach(b => b.disabled = match.isMatchOver);
         }
     </script>
