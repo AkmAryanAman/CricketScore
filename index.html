@@ -22,8 +22,8 @@
         }
         .series-tally { font-size: 0.9rem; background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 20px; }
         .history-item { border-left: 4px solid var(--accent); margin-bottom: 8px; }
-        .nb-active { border: 2px solid #e74c3c !important; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
+        .nb-active { border: 2px solid #e74c3c !important; background-color: #fce4e4 !important; color: #e74c3c !important; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.6; } }
     </style>
 </head>
 <body>
@@ -66,17 +66,17 @@
         </div>
     </div>
 
-    <div class="container mt-3" style="margin-bottom: 280px;">
-        <button class="btn btn-success btn-lg w-100 shadow mb-4" onclick="showConfirmModal('endInning')">Finish Inning Manually</button>
+    <div class="container mt-3" style="margin-bottom: 300px;">
+        <button class="btn btn-success btn-lg w-100 shadow mb-4 py-3 fw-bold" onclick="showConfirmModal('endInning')">Finish Inning Manually</button>
         <div class="card p-3 shadow-sm border-0 bg-white">
-            <h6 class="border-bottom pb-2 mb-2">Today's Results</h6>
-            <div id="series-log" class="small text-muted">Waiting...</div>
+            <h6 class="border-bottom pb-2 mb-2 fw-bold text-primary">Match Records</h6>
+            <div id="series-log" class="small text-muted">No matches completed yet.</div>
         </div>
     </div>
 
     <div class="control-pad">
-        <div class="container">
-            <div id="nb-status" class="text-danger small fw-bold text-center mb-1" style="display:none;">NO BALL ACTIVE: Press Runs</div>
+        <div class="container text-center">
+            <div id="nb-status" class="text-danger small fw-bold mb-1" style="display:none;">NO BALL! Press runs scored on this ball.</div>
             <div class="row g-2">
                 <div class="col-4"><button class="btn btn-outline-primary btn-score w-100 input-control" onclick="processInput(0)">0</button></div>
                 <div class="col-4"><button class="btn btn-outline-primary btn-score w-100 input-control" onclick="processInput(1)">1</button></div>
@@ -92,6 +92,7 @@
         </div>
     </div>
 
+    <!-- Modals -->
     <div class="modal fade" id="confirmModal" data-bs-backdrop="static" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -105,10 +106,13 @@
         </div>
     </div>
 
+    <!-- Sidebar Log -->
     <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasHistory">
-        <div class="offcanvas-header bg-dark text-white"><h5>Match Log</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button></div>
+        <div class="offcanvas-header bg-dark text-white"><h5>Live Match Log</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button></div>
         <div class="offcanvas-body bg-light" id="history-list"></div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         let rawHistory = [];
@@ -155,15 +159,12 @@
 
         function processInput(val) {
             if (seriesData.activeMatch.isMatchOver) return;
-            
             if (isNBActive) {
-                // For No Ball, we push an object representing the combo
                 rawHistory.push({ type: 'NB', runs: val });
-                toggleNoBall(); // Reset NB state
+                toggleNoBall();
             } else {
                 rawHistory.push(val);
             }
-            
             calculateScore();
             save();
         }
@@ -182,13 +183,17 @@
             const title = document.getElementById('modalTitle');
             const body = document.getElementById('modalBody');
             const btn = document.getElementById('modalConfirmBtn');
+            const cBtn = document.getElementById('modalCancelBtn');
+            
+            cBtn.style.display = "inline-block";
+
             if (type === 'endInning') {
-                title.innerText = "End Inning";
-                body.innerText = "Finish current inning?";
+                title.innerText = "End Inning Manually";
+                body.innerText = "Are you sure you want to finish this inning now?";
                 btn.onclick = () => { endInning(); confirmModal.hide(); };
             } else if (type === 'resetSeries') {
-                title.innerText = "Reset Data";
-                body.innerText = "Clear all series stats?";
+                title.innerText = "Full Series Reset";
+                body.innerText = "Wipe out all team names and records?";
                 btn.onclick = () => { localStorage.clear(); location.reload(); };
             }
             confirmModal.show();
@@ -205,6 +210,7 @@
                 rawHistory = [];
                 calculateScore();
             } else {
+                // Manually finishing the 2nd inning
                 pendingWin = true;
                 announceWinner();
             }
@@ -214,25 +220,45 @@
             const i1 = seriesData.activeMatch.inning1Runs;
             const i2 = getCurrentStats().totalRuns;
             let winner = "";
-            const t1 = seriesData.t1Name; const t2 = seriesData.t2Name;
-            const batFirst = seriesData.activeMatch.firstBatting;
-            const teamBattingFirst = (batFirst === 1) ? t1 : t2;
-            const teamBattingSecond = (batFirst === 1) ? t2 : t1;
+            
+            const t1 = seriesData.t1Name; 
+            const t2 = seriesData.t2Name;
+            const batFirstId = seriesData.activeMatch.firstBatting;
+            const teamBattingFirst = (batFirstId === 1) ? t1 : t2;
+            const teamBattingSecond = (batFirstId === 1) ? t2 : t1;
 
             if (i2 > i1) winner = teamBattingSecond;
             else if (i1 > i2) winner = teamBattingFirst;
             else winner = "Tie";
 
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-            document.getElementById('modalTitle').innerText = "Match Result";
-            document.getElementById('modalBody').innerHTML = `<h2 class="text-success">${winner === 'Tie' ? "Draw!" : winner + " Wins!"}</h2><p>${teamBattingFirst}: ${i1} | ${teamBattingSecond}: ${i2}</p>`;
+            
+            document.getElementById('modalTitle').innerText = "Match Over";
+            document.getElementById('modalBody').innerHTML = `
+                <h2 class="text-success">${winner === 'Tie' ? "Match Draw!" : winner + " Wins!"}</h2>
+                <hr>
+                <p class="mb-1">${teamBattingFirst}: <strong>${i1}</strong></p>
+                <p class="mb-3">${teamBattingSecond}: <strong>${i2}</strong></p>
+            `;
+            
             document.getElementById('modalConfirmBtn').innerText = "Next Match";
             document.getElementById('modalConfirmBtn').onclick = () => {
                 if (winner === t1) seriesData.t1Wins++;
                 else if (winner === t2) seriesData.t2Wins++;
+                
                 seriesData.matchesPlayed.push({ winner, score: `${i1} vs ${i2}` });
-                seriesData.activeMatch = { inning1Runs: 0, inning1Balls: 0, inning1Overs: 0, currentInning: 1, isMatchOver: false, firstBatting: (batFirst === 1 ? 2 : 1) };
-                rawHistory = []; pendingWin = false; confirmModal.hide(); calculateScore(); save();
+                
+                seriesData.activeMatch = { 
+                    inning1Runs: 0, inning1Balls: 0, inning1Overs: 0, 
+                    currentInning: 1, isMatchOver: false, 
+                    firstBatting: (batFirstId === 1 ? 2 : 1) 
+                };
+                
+                rawHistory = []; 
+                pendingWin = false; 
+                confirmModal.hide(); 
+                calculateScore(); 
+                save();
             };
             confirmModal.show();
         }
@@ -246,15 +272,13 @@
                 if (typeof input === 'number') {
                     totalRuns += input; totalBalls++; desc = `${input} Run(s)`;
                 } else if (input === 'WD') {
-                    totalRuns += 1; desc = "Wide";
+                    totalRuns += 1; desc = "Wide Ball";
                 } else if (input === 'W') {
-                    wickets++; totalBalls++; desc = "Wicket";
+                    wickets++; totalBalls++; desc = "Wicket!";
                 } else if (typeof input === 'object' && input.type === 'NB') {
-                    // input.runs is the manual run user added
-                    let runVal = (typeof input.runs === 'number') ? input.runs : 0;
-                    totalRuns += runVal; 
-                    desc = `NB + ${runVal} Run(s)`;
-                    // No Ball does not count towards totalBalls
+                    let runsOnNB = (typeof input.runs === 'number') ? input.runs : 0;
+                    totalRuns += runsOnNB; 
+                    desc = `NB (${runsOnNB} runs)`;
                 }
                 historyLog.push({ ball: ballLabel, desc, score: `${totalRuns}/${wickets}` });
             });
@@ -264,23 +288,36 @@
         function calculateScore() {
             const stats = getCurrentStats();
             const match = seriesData.activeMatch;
-            const battingTeam = (match.currentInning === 1) ? (match.firstBatting === 1 ? seriesData.t1Name : seriesData.t2Name) : (match.firstBatting === 1 ? seriesData.t2Name : seriesData.t1Name);
+            const t1 = seriesData.t1Name;
+            const t2 = seriesData.t2Name;
+            const battingTeam = (match.currentInning === 1) ? (match.firstBatting === 1 ? t1 : t2) : (match.firstBatting === 1 ? t2 : t1);
             
             document.getElementById('current-batting-name').innerText = battingTeam;
             document.getElementById('score-text').innerText = `${stats.totalRuns} - ${stats.wickets}`;
             document.getElementById('over-text').innerText = `Overs: ${Math.floor(stats.totalBalls / 6)}.${stats.totalBalls % 6}`;
-            document.getElementById('series-display').innerText = `${seriesData.t1Name} ${seriesData.t1Wins} - ${seriesData.t2Wins} ${seriesData.t2Name}`;
+            document.getElementById('series-display').innerText = `${t1} ${seriesData.t1Wins} - ${seriesData.t2Wins} ${t2}`;
 
             if (match.currentInning === 2) {
                 const target = match.inning1Runs + 1;
                 document.getElementById('target-display').innerText = `Target: ${target} (Max: ${match.inning1Overs} ovs)`;
-                if ((stats.totalRuns >= target || stats.wickets >= 10 || stats.totalBalls >= match.inning1Balls) && !match.isMatchOver && !pendingWin) {
-                    pendingWin = true; setTimeout(announceWinner, 500);
-                }
-            } else { document.getElementById('target-display').innerText = ""; }
+                
+                // Check for automatic match completion
+                const chased = stats.totalRuns >= target;
+                const allOut = stats.wickets >= 10;
+                const oversDone = stats.totalBalls >= match.inning1Balls;
 
-            document.getElementById('series-log').innerHTML = seriesData.matchesPlayed.map((m, i) => `<div>#${i+1}: <strong>${m.winner}</strong> (${m.score})</div>`).join('') || "None";
-            document.getElementById('history-list').innerHTML = stats.historyLog.reverse().map(e => `<div class="card p-2 mb-1 shadow-sm">Ball ${e.ball}: <strong>${e.desc}</strong> <span class="float-end text-muted">${e.score}</span></div>`).join('');
+                if ((chased || allOut || oversDone) && !match.isMatchOver && !pendingWin) {
+                    pendingWin = true; 
+                    setTimeout(announceWinner, 500);
+                }
+            } else { 
+                document.getElementById('target-display').innerText = "First Inning Progressing"; 
+            }
+
+            document.getElementById('series-log').innerHTML = seriesData.matchesPlayed.map((m, i) => `<div>Match ${i+1}: <strong>${m.winner}</strong> (${m.score})</div>`).join('') || "No results yet.";
+            document.getElementById('history-list').innerHTML = stats.historyLog.reverse().map(e => `<div class="card p-2 mb-1 shadow-sm border-0 border-start border-success border-4">Ball ${e.ball}: <strong>${e.desc}</strong> <span class="float-end text-muted small">${e.score}</span></div>`).join('');
+            
+            // Disable all controls if match is flagged over
             document.querySelectorAll('.input-control').forEach(b => b.disabled = match.isMatchOver);
         }
     </script>
