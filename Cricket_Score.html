@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cricket Scorer Pro</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #27ae60;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --light: #ecf0f1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: var(--light);
+        }
+
+        /* Top Section: Score Display */
+        #score-display {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--primary);
+            color: white;
+            position: relative;
+        }
+
+        .main-score { font-size: 4rem; font-weight: bold; margin: 0; }
+        .overs { font-size: 1.5rem; color: #bdc3c7; }
+
+        .top-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .top-btn {
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid white;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        /* Bottom Section: Controls */
+        #controls {
+            padding: 20px;
+            background: white;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+        }
+
+        button.input-btn {
+            padding: 20px 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .run-btn { background: #d7e9f7; color: #000; }
+        .extra-btn { background: var(--warning); color: white; }
+        .wicket-btn { background: var(--danger); color: white; grid-column: span 2; }
+        .undo-btn { background: #95a5a6; color: white; grid-column: span 2; }
+
+        /* History Overlay */
+        #history-panel {
+            display: none;
+            position: fixed;
+            top: 0; right: 0; width: 300px; height: 100%;
+            background: white;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        .history-header { padding: 20px; background: var(--primary); color: white; display: flex; justify-content: space-between; }
+        .history-item { padding: 10px 20px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div id="score-display">
+        <div class="top-controls">
+            <button class="top-btn" onclick="toggleHistory()">📜 History</button>
+        </div>
+        <div class="main-score" id="score-text">0 - 0</div>
+        <div class="overs" id="over-text">Overs: 0.0</div>
+    </div>
+
+    <div id="history-panel">
+        <div class="history-header">
+            <span>Match Log</span>
+            <span style="cursor:pointer" onclick="toggleHistory()">✖</span>
+        </div>
+        <div id="history-list"></div>
+    </div>
+
+    <div id="controls">
+        <button class="input-btn run-btn" onclick="processInput(0)">0</button>
+        <button class="input-btn run-btn" onclick="processInput(1)">1</button>
+        <button class="input-btn run-btn" onclick="processInput(2)">2</button>
+        <button class="input-btn run-btn" onclick="processInput(3)">3</button>
+        <button class="input-btn run-btn" onclick="processInput(4)">4</button>
+        <button class="input-btn run-btn" onclick="processInput(6)">6</button>
+        <button class="input-btn extra-btn" onclick="processInput('WD')">WD</button>
+        <button class="input-btn extra-btn" onclick="processInput('NB')">NB</button>
+        <button class="input-btn wicket-btn" onclick="processInput('W')">WICKET</button>
+        <button class="input-btn undo-btn" onclick="undoLast()">UNDO LAST</button>
+    </div>
+
+    <script>
+        // Central Data Store
+        let rawHistory = []; // Stores just the inputs: [1, 4, 'WD', 'W', 0]
+
+        function processInput(val) {
+            rawHistory.push(val);
+            calculateScore();
+        }
+
+        function undoLast() {
+            if (rawHistory.length > 0) {
+                rawHistory.pop();
+                calculateScore();
+            } else {
+                alert("No history to undo!");
+            }
+        }
+
+        function calculateScore() {
+            let totalRuns = 0;
+            let wickets = 0;
+            let totalBalls = 0;
+            let historyLog = [];
+
+            rawHistory.forEach((input) => {
+                let currentBallLabel = `${Math.floor(totalBalls / 6)}.${(totalBalls % 6) + 1}`;
+                let eventDesc = "";
+
+                if (typeof input === 'number') {
+                    totalRuns += input;
+                    totalBalls++;
+                    eventDesc = `${input} Run(s)`;
+                } else if (input === 'WD' || input === 'NB') {
+                    totalRuns += 1; // Extra run
+                    eventDesc = input === 'WD' ? "Wide" : "No Ball";
+                    // Balls don't increase for extras
+                } else if (input === 'W') {
+                    wickets++;
+                    totalBalls++;
+                    eventDesc = "Wicket";
+                }
+
+                historyLog.push({
+                    ball: currentBallLabel,
+                    desc: eventDesc,
+                    score: `${totalRuns}/${wickets}`
+                });
+            });
+
+            renderUI(totalRuns, wickets, totalBalls, historyLog);
+        }
+
+        function renderUI(runs, wickets, balls, log) {
+            // Update Scoreboard
+            document.getElementById('score-text').innerText = `${runs} - ${wickets}`;
+            document.getElementById('over-text').innerText = `Overs: ${Math.floor(balls / 6)}.${balls % 6}`;
+
+            // Update History Panel
+            const list = document.getElementById('history-list');
+            list.innerHTML = "";
+            log.reverse().forEach(entry => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.innerHTML = `<strong>Ball ${entry.ball}:</strong> ${entry.desc} <br> <small>Score: ${entry.score}</small>`;
+                list.appendChild(item);
+            });
+        }
+
+        function toggleHistory() {
+            const panel = document.getElementById('history-panel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        }
+    </script>
+</body>
+</html>
