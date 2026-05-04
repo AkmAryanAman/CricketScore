@@ -156,16 +156,33 @@ function getCurrentStats() {
     let runs = 0, wickets = 0, balls = 0, log = [];
     rawHistory.forEach(input => {
         let ballEvent = "";
-        if (typeof input === 'number') { runs += input; balls++; ballEvent = input === 0 ? "Dot Ball" : `${input} Run(s)`; }
-        else if (input === 'WD') { runs += 1; ballEvent = "Wide"; }
-        else if (input === 'W') { wickets++; balls++; ballEvent = "Wicket"; }
-        else if (input.type === 'NB') { 
+        let isIllegal = false;
+
+        if (typeof input === 'number') {
+            runs += input;
+            balls++; 
+            ballEvent = input === 0 ? "Dot Ball" : `${input} Run(s)`;
+        } else if (input === 'WD') {
+            runs += 1;
+            ballEvent = "Wide";
+            isIllegal = true;
+        } else if (input === 'W') {
+            wickets++;
+            balls++; 
+            ballEvent = "Wicket";
+        } else if (input.type === 'NB') {
             let r = (typeof input.runs === 'number' ? input.runs : 0);
-            runs += r; ballEvent = `No Ball (+${r})`; 
+            runs += r;
+            ballEvent = `No Ball (+${r})`;
+            isIllegal = true;
         }
 
+        // Fix: Logic to start from 0.1
+        let overNum = Math.floor((balls - 1) / 6);
+        let ballNum = ((balls - 1) % 6) + 1;
+
         log.push({
-            ball: `${Math.floor(balls / 6)}.${(balls % 6) + 1}`,
+            ball: isIllegal ? "Extra" : `${overNum}.${ballNum}`,
             event: ballEvent,
             score: `${runs}/${wickets}`
         });
@@ -178,34 +195,60 @@ function calculateScore() {
     const t1 = seriesData.t1Name, t2 = seriesData.t2Name, batId = match.firstBatting;
     const battingTeam = match.currentInning === 1 ? (batId === 1 ? t1 : t2) : (batId === 1 ? t2 : t1);
 
+    // Scoreboard Updates
     document.getElementById('current-batting-name').innerText = battingTeam;
     document.getElementById('score-text').innerText = `${stats.runs} - ${stats.wickets}`;
-    document.getElementById('over-text').innerText = `${Math.floor(stats.balls/6)}.${stats.balls%6}`;
+    document.getElementById('over-text').innerText = `Overs: ${Math.floor(stats.balls/6)}.${stats.balls%6}`;
     document.getElementById('series-display').innerText = `${t1} ${seriesData.t1Wins} - ${seriesData.t2Wins} ${t2}`;
-    document.getElementById('info-bar').innerText = `Overs: ${seriesData.oversLimit} | Wkts: ${seriesData.playersLimit - 1}`;
+    document.getElementById('info-bar').innerText = `Overs Limit: ${seriesData.oversLimit} | P: ${seriesData.playersLimit}`;
 
     const targetDiv = document.getElementById('target-display');
 
-    if (match.currentInning === 1) {
+    if (match.currentInning === 1 && !pendingWin) {
         targetDiv.style.display = "none";
-        if (!pendingWin && (stats.balls >= (seriesData.oversLimit * 6) || stats.wickets >= (seriesData.playersLimit - 1))) {
+        if (stats.balls >= (seriesData.oversLimit * 6) || stats.wickets >= (seriesData.playersLimit - 1)) {
             pendingWin = true; 
-            const teamName = (batId === 1 ? t1 : t2);
-            document.getElementById('inningModalText').innerHTML = `<b>${teamName}</b> finished at <b>${stats.runs}/${stats.wickets}</b>.`;
-            inningModal.show();
+            triggerInningSwitchPopup();
         }
-    } else {
+    } else if (match.currentInning === 2 && !pendingWin) {
         const target = match.inning1Runs + 1;
         targetDiv.style.display = "block";
-        targetDiv.innerHTML = `<span class="small opacity-75">TARGET:</span> ${target}`;
+        targetDiv.innerText = `TARGET: ${target}`;
         
-        if (!pendingWin && (stats.runs >= target || stats.wickets >= (seriesData.playersLimit - 1) || stats.balls >= (seriesData.oversLimit * 6))) {
+        if (stats.runs >= target || stats.wickets >= (seriesData.playersLimit - 1) || stats.balls >= (seriesData.oversLimit * 6)) {
             pendingWin = true;
             announceWinner();
         }
     }
 
-    // Update Ball Logs
+    // --- CLEAN HISTORY LOG (NO DUPLICATES) ---
+    const seriesLog = document.getElementById('series-log');
+
+    if (seriesData.matchesPlayed.length > 0) {
+        seriesLog.innerHTML = seriesData.matchesPlayed.map((m, index) => {
+            const isLatest = index === seriesData.matchesPlayed.length - 1;
+            return `
+                <div class="p-3 bg-white border rounded shadow-sm mb-2" 
+                     style="border-left: 5px solid ${isLatest ? '#27ae60' : '#2c3e50'} !important;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>
+                            ${isLatest ? '<span class="badge bg-success mb-1">LATEST RESULT</span><br>' : ''}
+                            <b>Match #${index + 1}</b>
+                        </span>
+                        <span class="text-success fw-bold">${m.winner} Won</span>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted mt-1">
+                        <span>${m.t1}: <b>${m.s1}</b></span>
+                        <span>vs</span>
+                        <span>${m.t2}: <b>${m.s2}</b></span>
+                    </div>
+                </div>`;
+        }).reverse().join('');
+    } else {
+        seriesLog.innerHTML = `<div class="text-muted text-center py-3">No matches played yet.</div>`;
+    }
+
+    // Ball Log Sidebar
     document.getElementById('history-list').innerHTML = stats.log.reverse().map(e => `
         <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-white m-2 rounded shadow-sm border-start border-primary border-4">
             <div><span class="text-muted small">Ball ${e.ball}</span><br><b>${e.event}</b></div>
