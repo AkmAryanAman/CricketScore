@@ -143,6 +143,29 @@
         </div>
     </div>
 
+    <!-- New: Intermediate Match Setup Modal -->
+    <div class="modal fade" id="matchSetupModal" data-bs-backdrop="static" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-primary text-white justify-content-center">
+                    <h5 class="modal-title fw-bold">NEXT MATCH SETUP</h5>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Overs for this Match</label>
+                        <input type="number" id="next-overs-input" class="form-control" min="1">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Who will bat first?</label>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary py-3 fw-bold" id="setup-bat-t1" onclick="finalizeNextMatch(1)"></button>
+                            <button class="btn btn-outline-primary py-3 fw-bold" id="setup-bat-t2" onclick="finalizeNextMatch(2)"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Universal Confirmation Modal -->
     <div class="modal fade" id="confirmModal" data-bs-backdrop="static" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
