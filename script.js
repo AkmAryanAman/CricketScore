@@ -1,5 +1,5 @@
 let rawHistory = [], isNBActive = false, pendingWin = false;
-let resultModal, inningModal, confirmModal; // Bootstrap Modal Instances
+let resultModal, inningModal, confirmModal, matchSetupModal; // Bootstrap Modal Instances
 
 let seriesData = {
     t1Name: "Team 1", t2Name: "Team 2", t1Wins: 0, t2Wins: 0, 
@@ -14,6 +14,7 @@ window.onload = () => {
     resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
     inningModal = new bootstrap.Modal(document.getElementById('inningModal'));
     confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    matchSetupModal = new bootstrap.Modal(document.getElementById('matchSetupModal'));
     
     const saved = localStorage.getItem('cricketMasterSave');
     if (saved) {
@@ -134,10 +135,12 @@ function announceWinner() {
         </div>`;
     
     document.getElementById('modalConfirmBtn').onclick = () => {
-        if (winStr === t1) seriesData.t1Wins++; else if (winStr === t2) seriesData.t2Wins++;
+        if (winStr !== 'Tie') {
+            if (winStr === t1) seriesData.t1Wins++; else if (winStr === t2) seriesData.t2Wins++;
+        }
         seriesData.matchesPlayed.push({ winner: winStr, t1: name1, s1: i1, t2: name2, s2: i2 });
-        document.getElementById('next-match-overlay').style.display = 'flex';
         resultModal.hide();
+        openMatchSetup(winStr);
         save();
     };
     resultModal.show();
@@ -227,6 +230,11 @@ function calculateScore() {
     if (seriesData.matchesPlayed.length > 0) {
         seriesLog.innerHTML = seriesData.matchesPlayed.map((m, index) => {
             const isLatest = index === seriesData.matchesPlayed.length - 1;
+            const isTie = false;
+            if(m.winner !== 'Tie'){
+                m.winner = m.winner + " Won";
+                isTie = true;
+            }
             return `
                 <div class="p-3 bg-white border rounded shadow-sm mb-2" 
                      style="border-left: 5px solid ${isLatest ? '#27ae60' : '#2c3e50'} !important;">
@@ -235,7 +243,7 @@ function calculateScore() {
                             ${isLatest ? '<span class="badge bg-success mb-1">LATEST RESULT</span><br>' : ''}
                             <b>Match #${index + 1}</b>
                         </span>
-                        <span class="text-success fw-bold">${m.winner} Won</span>
+                        <span class="${isTie ? 'text-success' : 'text-warning'} fw-bold">${m.winner}</span>
                     </div>
                     <div class="d-flex justify-content-between small text-muted mt-1">
                         <span>${m.t1}: <b>${m.s1}</b></span>
@@ -254,4 +262,38 @@ function calculateScore() {
             <div><span class="text-muted small">Ball ${e.ball}</span><br><b>${e.event}</b></div>
             <span class="badge bg-primary px-3 py-2">${e.score}</span>
         </div>`).join('');
+}
+
+function openMatchSetup(lastWinner) {
+    // Update button labels with team names[cite: 2]
+    document.getElementById('setup-bat-t1').innerText = seriesData.t1Name;
+    document.getElementById('setup-bat-t2').innerText = seriesData.t2Name;
+    
+    // Set default overs to the series default[cite: 2]
+    document.getElementById('next-overs-input').value = seriesData.oversLimit;
+    
+    // Note: You can optionally display the lastWinner name in the UI here if needed[cite: 2]
+    matchSetupModal.show();
+}
+
+// New: Finalizes the overs and batting for the new match[cite: 2]
+function finalizeNextMatch(batId) {
+    const newOvers = parseInt(document.getElementById('next-overs-input').value);
+    
+    // Update overs for only this match if desired, or update series default[cite: 2]
+    seriesData.oversLimit = newOvers; 
+    
+    seriesData.activeMatch = { 
+        inning1Runs: 0, 
+        currentInning: 1, 
+        isMatchOver: false, 
+        firstBatting: batId 
+    };
+    
+    rawHistory = [];
+    pendingWin = false;
+    
+    matchSetupModal.hide();
+    save(); // Persist changes[cite: 2]
+    calculateScore(); // Refresh UI[cite: 2]
 }
