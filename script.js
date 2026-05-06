@@ -230,11 +230,6 @@ function calculateScore() {
     if (seriesData.matchesPlayed.length > 0) {
         seriesLog.innerHTML = seriesData.matchesPlayed.map((m, index) => {
             const isLatest = index === seriesData.matchesPlayed.length - 1;
-            var isTie = false;
-            if(m.winner !== 'Tie'){
-                m.winner = m.winner + " Won";
-                isTie = true;
-            }
             return `
                 <div class="p-3 bg-white border rounded shadow-sm mb-2" 
                      style="border-left: 5px solid ${isLatest ? '#27ae60' : '#2c3e50'} !important;">
@@ -243,7 +238,9 @@ function calculateScore() {
                             ${isLatest ? '<span class="badge bg-success mb-1">LATEST RESULT</span><br>' : ''}
                             <b>Match #${index + 1}</b>
                         </span>
-                        <span class="${isTie ? 'text-success' : 'text-warning'} fw-bold">${m.winner}</span>
+                        <span class="${m.winner==='Tie' ? 'text-warning' : 'text-success' }  fw-bold">
+                            ${m.winner === 'Tie' ? 'Match Draw' : m.winner + " Won" }
+                        </span>
                     </div>
                     <div class="d-flex justify-content-between small text-muted mt-1">
                         <span>${m.t1}: <b>${m.s1}</b></span>
