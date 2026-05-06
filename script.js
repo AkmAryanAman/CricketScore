@@ -230,7 +230,7 @@ function calculateScore() {
     if (seriesData.matchesPlayed.length > 0) {
         seriesLog.innerHTML = seriesData.matchesPlayed.map((m, index) => {
             const isLatest = index === seriesData.matchesPlayed.length - 1;
-            const isTie = false;
+            var isTie = false;
             if(m.winner !== 'Tie'){
                 m.winner = m.winner + " Won";
                 isTie = true;
