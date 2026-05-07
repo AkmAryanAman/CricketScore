@@ -203,7 +203,7 @@ function calculateScore() {
     document.getElementById('score-text').innerText = `${stats.runs} - ${stats.wickets}`;
     document.getElementById('over-text').innerText = `Overs: ${Math.floor(stats.balls/6)}.${stats.balls%6}`;
     document.getElementById('series-display').innerText = `${t1} ${seriesData.t1Wins} - ${seriesData.t2Wins} ${t2}`;
-    document.getElementById('info-bar').innerText = `Overs Limit: ${seriesData.oversLimit} | P: ${seriesData.playersLimit}`;
+    document.getElementById('info-bar').innerText = `Overs Limit: ${seriesData.oversLimit} | Players: ${seriesData.playersLimit}`;
 
     const targetDiv = document.getElementById('target-display');
 
