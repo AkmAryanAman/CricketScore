@@ -239,7 +239,7 @@ function calculateScore() {
                             <b>Match #${index + 1}</b>
                         </span>
                         <span class="${m.winner==='Tie' ? 'text-warning' : 'text-success' }  fw-bold">
-                            ${m.winner === 'Tie' ? 'Match Draw' : m.winner + " Won" }
+                            ${m.winner === 'Tie' ? 'Match Draw' : "Winner : "+ m.winner }
                         </span>
                     </div>
                     <div class="d-flex justify-content-between small text-muted mt-1">
